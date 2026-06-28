@@ -21,7 +21,7 @@ DecisionOps is a Slack-native AI agent that turns a discussion thread into a **c
 - **Track:** New Slack Agent. (Implied by the choice to keep the app internal/custom, which is incompatible with the Organizations track's Marketplace-submission requirement. Switching to Organizations later is a distribution-layer change, not an architecture change.)
 - **App type:** Internal / custom app, single workspace. This is required for performance — internal apps are **exempt** from the May-2025 `conversations.history` throttle (distributed non-Marketplace apps drop to 1 req/min × 15 objects; internal keep ~50+/min × 1000 objects), and our memory reads depend on `conversations.history`.
 - **Compute:** Self-hosted (serverless function or small always-on host). **Fully-Slack-hosted compute is not possible for this agent type** — `slack create agent` scaffolds a self-hosted Bolt app; Slack's hosted runtime (ROSI) only runs the legacy Deno platform, which lacks the agent framework + RTS. **The honest framing: zero external *data* (no DB/vector store/object store — Slack is the entire backend), but compute runs on a host.**
-- **Stack default:** Bolt for JavaScript/TypeScript + Claude Agent SDK (latest Claude model). Easily switchable to Bolt Python; flag in review.
+- **Stack default:** Bolt for JavaScript/TypeScript + the **Anthropic Messages API** (`@anthropic-ai/sdk`), owning the agent loop — **not** the higher-level Claude Agent SDK. Model `claude-opus-4-8`, adaptive thinking, `effort: "high"`. Rationale: harness-level memory requires placing exactly the right bytes in context each turn, and our retrieval is deliberately *bounded* (≤6 RTS calls), not open-ended agentic — both fight the Agent SDK's autonomy. The Claude Agent SDK is reserved as an option for the phase-2 conversational/assistant surface. Easily switchable to Bolt Python; flag in review.
 
 ---
 
@@ -168,6 +168,19 @@ Modeled on harness-level memory (Dhravya, *Memory on the harness level*): **stat
 | Semantic RTS gated to Slack-AI plans; indexing is batch ("offline jobs") | **Keyword-first** design; detect via `assistant.search.info`; tolerate indexing latency |
 | Streaming: interactive blocks only attach on `chat.stopStream` | Post the **approval card via `chat.postMessage`**, not mid-stream |
 | RTS rate limit: special tier, per-user 10/min, <10 calls/inquiry | Budget **≤6 RTS calls/capture**; profiles absorb the rest |
+| LLM prompt cache is a prefix match (`tools → system → messages`); any byte change in the prefix invalidates everything after | Maps the memory model onto the cache: **static profile** in the cached `system` block (frozen, ~0.1× cost on reads); **dynamic profile** injected *after* the breakpoint each turn |
+| Opus 4.8 min cacheable prefix = 4096 tokens | Cache `[system instructions + static profile]` **together** under one breakpoint (the profile alone is too small to cache) |
+| Opus 4.8 mid-conversation system messages (`role:"system"` in `messages[]`, no beta header) | Inject the **dynamic profile** per turn this way — operator authority **and** preserves the cached static prefix. Non-Opus-4.8 fallback: a `<system-reminder>` block in the user turn |
+
+---
+
+## 8a. Agent runtime
+
+Own the loop with the **Anthropic Messages API** (manual agentic loop), not the Claude Agent SDK (§2):
+- **Static profile** → cached `system` block (bundled with system instructions to clear the 4096-token floor).
+- **Dynamic profile** → mid-conversation `role:"system"` message appended to `messages[]` each turn.
+- **Bounded RTS** → manual agentic loop: RTS exposed as one tool; loop until the brief's gaps are filled; **hard-stop at ≤6 iterations**. The model picks the query; the orchestration code enforces the budget. Reach the Slack MCP server via the MCP connector (`mcp_servers` + `mcp_toolset`) or call RTS directly from orchestration code.
+- The foreground's only LLM work is gap-check (step 5) + bounded search (step 6) + per-decision synthesis (step 7); the observer's consolidation (step 11) is a separate Messages API call off the hot path.
 
 ---
 
