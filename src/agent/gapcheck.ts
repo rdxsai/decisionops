@@ -30,9 +30,9 @@ export async function gatherContext(a: {
   await a.llm.toolLoop({
     system: cachedSystem(INSTR, a.staticProfile),
     messages: [
-      dynamicSystemMessage(a.dynamicProfile),
       { role: "user", content:
         `Decision: ${a.resolved.decisionStatement}\nOpen questions: ${a.resolved.openQuestions.join("; ")}` },
+      dynamicSystemMessage(a.dynamicProfile),
     ],
     tools: [SEARCH_TOOL],
     maxIterations: 6,

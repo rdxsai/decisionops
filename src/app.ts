@@ -83,6 +83,7 @@ app.shortcut("capture_decision", async ({ shortcut, ack, client }: { shortcut: a
 async function finalize(decisionId: string, approverId: string, status: "decided" | "rejected") {
   const p = pending.get(decisionId);
   if (!p) return;
+  pending.delete(decisionId); // claim immediately — double-clicks find nothing and no-op
   const record: DecisionRecord = { ...p.record, status, decidedAt: nowIso(), approvers: [approverId] };
 
   if (status === "decided") {
@@ -97,18 +98,20 @@ async function finalize(decisionId: string, approverId: string, status: "decided
     });
   }
 
-  // Step 10/11: write the decision and run the inline observer to update the profile.
+  // Step 10/11: write the decision record for all statuses (audit trail).
   await ledger.writeDecision(record);
-  const entity = record.entities[0] ?? entityIdForChannel(p.channelId);
-  const prior = (await ledger.getProfile(entity)) ?? coldProfile(entity, nowIso());
-  const newCursorTs = p.threadTs; // delta cursor advances to this capture's anchor
-  const profile = await consolidate({
-    llm, prior, newDecision: record,
-    recentRefs: record.contextRefs.map((r) => ({ permalink: r.permalink, snippet: r.snippet, ts: r.ts })),
-    newCursorTs, now: nowIso(),
-  });
-  await ledger.writeProfile(profile);
-  pending.delete(decisionId);
+  // Only consolidate into the entity profile for approved decisions.
+  if (status === "decided") {
+    const entity = record.entities[0] ?? entityIdForChannel(p.channelId);
+    const prior = (await ledger.getProfile(entity)) ?? coldProfile(entity, nowIso());
+    const newCursorTs = p.threadTs; // delta cursor advances to this capture's anchor
+    const profile = await consolidate({
+      llm, prior, newDecision: record,
+      recentRefs: record.contextRefs.map((r) => ({ permalink: r.permalink, snippet: r.snippet, ts: r.ts })),
+      newCursorTs, now: nowIso(),
+    });
+    await ledger.writeProfile(profile);
+  }
 }
 
 app.action("approve", async ({ ack, body, action }: { ack: any; body: any; action: any }) => { await ack(); await finalize((action as any).value, (body as any).user.id, "decided"); });

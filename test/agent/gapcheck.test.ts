@@ -24,5 +24,10 @@ describe("gatherContext", () => {
     });
     expect(refs.map((r) => r.permalink)).toEqual(["p"]);
     expect(rts.searchContext).toHaveBeenCalledTimes(1);
+    // Regression guard: first message must not be a system message (API rejects role:"system" at messages[0])
+    const firstCall = (create.mock.calls as any[][])[0]![0] as { messages: Array<{ role: string }> };
+    expect(firstCall.messages[0].role).not.toBe("system");
+    // afterTs forwarded to RTS as `after`
+    expect(rts.searchContext).toHaveBeenCalledWith(expect.objectContaining({ after: "0" }));
   });
 });

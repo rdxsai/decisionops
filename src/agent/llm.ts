@@ -41,7 +41,9 @@ export class Llm {
       messages: a.messages,
       output_config: { ...BASE.output_config, format: { type: "json_schema", schema: a.schema } },
     });
-    return JSON.parse(firstText(res.content)) as T;
+    const text = firstText(res.content);
+    try { return JSON.parse(text) as T; }
+    catch { throw new Error(`structured(): model returned no parseable JSON (got ${text.length} chars)`); }
   }
 
   async toolLoop(a: {

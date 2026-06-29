@@ -48,10 +48,10 @@ export async function synthesizeBrief(a: {
   return a.llm.structured<Brief>({
     system: cachedSystem(INSTR, a.staticProfile),
     messages: [
-      dynamicSystemMessage(a.dynamicProfile),
       { role: "user", content:
         `Decision: ${a.resolved.decisionStatement}\nOptions: ${a.resolved.options.join(", ")}\n` +
         `Open questions: ${a.resolved.openQuestions.join("; ")}\nRetrieved context:\n${refsText}` },
+      dynamicSystemMessage(a.dynamicProfile),
     ],
     schema: SCHEMA as object,
   });

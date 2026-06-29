@@ -18,5 +18,8 @@ describe("synthesizeBrief", () => {
     });
     expect(brief.decisionText).toBe("Use Postgres");
     expect(brief.proposedOwners[0].userId).toBe("U1");
+    // Regression guard: first message must not be a system message (API rejects role:"system" at messages[0])
+    const firstCall = (create.mock.calls as any[][])[0]![0] as { messages: Array<{ role: string }> };
+    expect(firstCall.messages[0].role).not.toBe("system");
   });
 });
