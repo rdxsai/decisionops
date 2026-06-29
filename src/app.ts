@@ -1,4 +1,5 @@
 // src/app.ts
+import "dotenv/config";
 import { App } from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
 import Anthropic from "@anthropic-ai/sdk";
