@@ -6,7 +6,8 @@ export interface RtsClient {
     query: string; after?: string;
     disable_semantic_search?: boolean; action_token?: string;
   }): Promise<{
-    results: Array<{ permalink: string; channel_id: string; ts: string; text: string; is_private?: boolean }>;
+    // Real assistant.search.context groups results by content type: { messages, files, channels, users }.
+    results?: { messages?: Array<Record<string, any>> };
   }>;
   searchInfo(): Promise<{ semantic_search_enabled: boolean }>;
 }
@@ -34,11 +35,12 @@ export function makeSearch(client: RtsClient, budget: SearchBudget): Search {
         after: opts.afterTs,
         disable_semantic_search: !useSemantic,
       });
-      return (res.results ?? []).map((r): ContextRef => ({
-        permalink: r.permalink,
-        channelId: r.channel_id,
-        ts: r.ts,
-        snippet: (r.text ?? "").slice(0, SNIPPET_MAX),
+      // Defensive field mapping — message item field names vary; never crash on missing fields.
+      return (res.results?.messages ?? []).map((r): ContextRef => ({
+        permalink: r.permalink ?? "",
+        channelId: r.channel_id ?? r.channel?.id ?? "",
+        ts: r.message_ts ?? r.ts ?? "",
+        snippet: String(r.content ?? r.text ?? "").slice(0, SNIPPET_MAX),
         visibility: (r.is_private ? "private" : "public") as Visibility,
       }));
     },

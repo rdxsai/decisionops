@@ -12,7 +12,7 @@ export function makeFakeSlack() {
     async conversationsHistory() { return { messages }; },
   };
   const rts: RtsClient = {
-    async searchContext() { calls++; return { results: result }; },
+    async searchContext() { calls++; return { results: { messages: result } }; },
     async searchInfo() { return { semantic_search_enabled: false }; },
   };
   return {

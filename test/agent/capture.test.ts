@@ -42,7 +42,7 @@ function scriptedLlm(searchCalls: number) {
 }
 
 const rts = () => ({
-  searchContext: vi.fn(async () => ({ results: [{ permalink: "p", channel_id: "C1", ts: "1.0", text: "c", is_private: false }] })),
+  searchContext: vi.fn(async () => ({ results: { messages: [{ permalink: "p", channel_id: "C1", ts: "1.0", text: "c", is_private: false }] } })),
   searchInfo: vi.fn(async () => ({ semantic_search_enabled: false })),
 });
 

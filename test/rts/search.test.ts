@@ -5,7 +5,7 @@ import { SearchBudget } from "../../src/rts/budget";
 function fakeRts(over: Partial<RtsClient> = {}): RtsClient {
   return {
     searchContext: vi.fn(async () => ({
-      results: [{ permalink: "p", channel_id: "C1", ts: "1.0", text: "hello world here", is_private: true }],
+      results: { messages: [{ permalink: "p", channel_id: "C1", ts: "1.0", text: "hello world here", is_private: true }] },
     })),
     searchInfo: vi.fn(async () => ({ semantic_search_enabled: false })),
     ...over,

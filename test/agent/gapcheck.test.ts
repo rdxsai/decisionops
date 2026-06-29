@@ -14,7 +14,7 @@ describe("gatherContext", () => {
       .mockResolvedValueOnce({ stop_reason: "end_turn", content: [{ type: "text", text: "enough" }] });
     const llm = new Llm({ messages: { create } } as any);
     const rts = {
-      searchContext: vi.fn(async () => ({ results: [{ permalink: "p", channel_id: "C1", ts: "1.0", text: "ctx", is_private: false }] })),
+      searchContext: vi.fn(async () => ({ results: { messages: [{ permalink: "p", channel_id: "C1", ts: "1.0", text: "ctx", is_private: false }] } })),
       searchInfo: vi.fn(async () => ({ semantic_search_enabled: false })),
     };
     const search = makeSearch(rts, new SearchBudget(6));

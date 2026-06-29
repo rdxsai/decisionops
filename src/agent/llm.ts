@@ -23,9 +23,10 @@ export const dynamicSystemMessage = (dynamicProfile: string) =>
 
 const BASE = {
   model: MODEL,
-  max_tokens: 16000,
-  thinking: { type: "adaptive" as const },
-  output_config: { effort: "high" as const },
+  max_tokens: 4096,
+  // Cost-tuned: no adaptive thinking (the expensive part) and low effort — these are
+  // structured extraction/synthesis steps, not deep reasoning. Bump effort back up if quality dips.
+  output_config: { effort: "low" as const },
 };
 
 const firstText = (content: any[]): string =>
