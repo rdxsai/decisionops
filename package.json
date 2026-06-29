@@ -7,6 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "doctor": "tsx src/doctor.ts",
+    "seed": "tsx src/seed.ts",
     "dev": "tsx watch src/app.ts"
   },
   "dependencies": {
