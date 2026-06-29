@@ -73,6 +73,7 @@ describe("DecisionOps eval — logic layer", () => {
       { ledger: warmLedger, llm: scriptedLlm(0), search: makeSearch(warm.rts, warmBudget), budget: warmBudget, now: "t" },
       { channelId: "C1", threadTs: "1.0", capturer: "U1", threadText: "..." });
 
+    expect(coldRes.rtsCalls).toBeGreaterThan(0);
     expect(warmRes.rtsCalls).toBeLessThan(coldRes.rtsCalls);
     console.log(`cold RTS calls=${coldRes.rtsCalls}  warm RTS calls=${warmRes.rtsCalls}`); // the thesis chart
   });
