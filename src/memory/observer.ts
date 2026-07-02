@@ -58,11 +58,17 @@ function buildProfile(
   newCursorTs: string,
   now: string,
 ): EntityProfile {
+  // Monotonic guard: never let the cursor regress. Both callers (consolidate on finalize,
+  // observeActivity on the async fold) funnel through here, so an older finalize (e.g. the
+  // observer already advanced past it) can't roll the cursor backward.
+  const cursor = numTs(newCursorTs) >= numTs(prior.dynamic.searchCursor.untilTs)
+    ? newCursorTs
+    : prior.dynamic.searchCursor.untilTs;
   return {
     recordType: "entity_profile",
     entityId: prior.entityId,
     static: { ...out.static, builtAt: out.static.builtAt || prior.static.builtAt },
-    dynamic: { ...out.dynamic, searchCursor: { untilTs: newCursorTs }, refreshedAt: now },
+    dynamic: { ...out.dynamic, searchCursor: { untilTs: cursor }, refreshedAt: now },
   };
 }
 

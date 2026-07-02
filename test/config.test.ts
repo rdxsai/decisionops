@@ -29,4 +29,13 @@ describe("loadConfig", () => {
     expect(over.observerThreshold).toBe(5);
     expect(over.observerMaxFoldsPerTick).toBe(1);
   });
+  it("falls back to defaults for malformed or empty-string numeric observer env vars", () => {
+    const base = {
+      SLACK_BOT_TOKEN: "b", SLACK_APP_TOKEN: "a", SLACK_SIGNING_SECRET: "s",
+      SLACK_WORKSPACE_TOKEN: "w", LEDGER_CHANNEL_ID: "C", ANTHROPIC_API_KEY: "k",
+    };
+    const cfg = loadConfig({ ...base, OBSERVER_INTERVAL_MS: "abc", OBSERVER_FOLD_WINDOW: "" } as any);
+    expect(cfg.observerIntervalMs).toBe(300000); // malformed -> default, not NaN
+    expect(cfg.observerFoldWindow).toBe(50);     // empty string -> default, not 0
+  });
 });

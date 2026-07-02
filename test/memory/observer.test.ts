@@ -29,6 +29,23 @@ describe("observer", () => {
     expect(next.dynamic.searchCursor.untilTs).toBe("1700"); // code overrides model's cursor
     expect(next.dynamic.inFlightDecisions).toContain("d9");
   });
+
+  it("consolidate never regresses the cursor when newCursorTs is older than the prior cursor", async () => {
+    const create = vi.fn(async () => ({ content: [{ type: "text", text: JSON.stringify({
+      static: { summary: "billing area", keyPeople: ["U1"], keySystems: ["postgres"], decisionNorms: "eng+finance", builtAt: "t1" },
+      dynamic: { inFlightDecisions: ["d9"], recentThreads: [], openQuestions: [], searchCursor: { untilTs: "IGNORED" }, refreshedAt: "t1" },
+    })}]}));
+    const llm = new Llm({ messages: { create } } as any);
+    const prior: EntityProfile = {
+      recordType: "entity_profile", entityId: "channel:C1",
+      static: { summary: "billing area", keyPeople: [], keySystems: [], decisionNorms: "", builtAt: "t0" },
+      dynamic: { inFlightDecisions: [], recentThreads: [], openQuestions: [], searchCursor: { untilTs: "500" }, refreshedAt: "t0" },
+    };
+    // The observer already advanced the channel's cursor to 500 (e.g. a later async fold);
+    // this finalize is for an OLDER capture (threadTs 450) — the cursor must stay at 500.
+    const next = await consolidate({ llm, prior, newDecision: decision, recentRefs: [], newCursorTs: "450", now: "t1" });
+    expect(next.dynamic.searchCursor.untilTs).toBe("500");
+  });
 });
 
 const warmPrior = (): EntityProfile => ({

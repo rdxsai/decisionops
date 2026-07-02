@@ -31,7 +31,8 @@ function fakeHistoryClient(byChannel: Record<string, { ts: string; user?: string
 }
 const deps = (over: any) => ({
   permalink: async (c: string, ts: string) => `https://x/${c}/${ts}`,
-  threshold: 8, recentK: 3, foldWindow: 50, maxFolds: 10, now: () => "t", ...over,
+  threshold: 8, recentK: 3, foldWindow: 50, maxFolds: 10, now: () => "t",
+  ledgerChannelId: "CLEDGER", ...over,
 });
 
 describe("runObserverTick", () => {
@@ -110,5 +111,26 @@ describe("runObserverTick", () => {
     // Cursor advances to the newest FOLDED message (102), NOT the global newest (105):
     // messages 103–105 stay behind an un-advanced cursor, still live-searchable by a capture.
     expect((await ledger.getProfile("channel:C1"))?.dynamic.searchCursor.untilTs).toBe("102");
+  });
+
+  it("never observes the Ledger channel, even if botMemberships reports it", async () => {
+    const { client } = fakeLedgerClient();
+    const ledger = makeLedger(client, "CLEDGER");
+    const registry = makeRegistry(client, "CLEDGER", () => "t");
+    const history = makeHistory(fakeHistoryClient({
+      C1: Array.from({ length: 10 }, (_, i) => ({ ts: `${200 + i}`, user: "U1", text: "postgres talk" })),
+      CLEDGER: Array.from({ length: 10 }, (_, i) => ({ ts: `${200 + i}`, user: "U1", text: "ledger bookkeeping" })),
+    }));
+    const { llm, create } = foldLlm();
+
+    const res = await runObserverTick(deps({
+      ledger, registry, history, llm, ledgerChannelId: "CLEDGER",
+      botMemberships: async () => ["C1", "CLEDGER"] }));
+
+    expect(res.folded).toBe(1); // only C1
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(await ledger.getProfile("channel:CLEDGER")).toBeNull();
+    const profile = await ledger.getProfile("channel:C1");
+    expect(profile?.static.summary).toBe("warmed");
   });
 });

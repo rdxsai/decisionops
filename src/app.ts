@@ -159,6 +159,7 @@ if (cfg.observerEnabled) {
         ledger, registry, history, permalink, llm, botMemberships,
         threshold: cfg.observerThreshold, recentK: cfg.observerRecentK,
         foldWindow: cfg.observerFoldWindow, maxFolds: cfg.observerMaxFoldsPerTick, now: nowIso,
+        ledgerChannelId: cfg.ledgerChannelId,
       });
       console.log(`observer tick: folded=${r.folded} skipped=${r.skipped} deferred=${r.deferred}`);
     } catch (e) {

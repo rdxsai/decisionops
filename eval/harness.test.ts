@@ -147,7 +147,8 @@ describe("DecisionOps eval — logic layer", () => {
     const history = makeHistory(obs.historyClient);
     await runObserverTick({
       ledger, registry, history, llm: warmingLlm(), permalink: obs.permalink,
-      botMemberships: async () => obs.memberships(), threshold: 8, recentK: 3, foldWindow: 50, maxFolds: 3, now: () => "t" });
+      botMemberships: async () => obs.memberships(), threshold: 8, recentK: 3, foldWindow: 50, maxFolds: 3, now: () => "t",
+      ledgerChannelId: "CLEDGER" });
 
     // The observer folded raw activity into a warm profile (cursor advanced over folded content).
     const warmed = await ledger.getProfile("channel:C1");

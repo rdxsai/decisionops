@@ -20,8 +20,13 @@ export async function runObserverTick(deps: {
   foldWindow: number;
   maxFolds: number;
   now: () => string;
+  ledgerChannelId: string;
 }): Promise<{ folded: number; skipped: number; deferred: number }> {
-  const { active } = await reconcileRegistry(deps.registry, await deps.botMemberships());
+  // The Ledger channel is the datastore, not a decision channel — never observe/fold its
+  // own bookkeeping messages. Filtering before reconcile also self-heals: if it was ever
+  // registered, reconcile now deactivates it since it's absent from active memberships.
+  const memberships = (await deps.botMemberships()).filter((id) => id !== deps.ledgerChannelId);
+  const { active } = await reconcileRegistry(deps.registry, memberships);
 
   // One batch read of all profiles per tick (avoids a full ledger scan per channel).
   const byEntity = new Map<string, EntityProfile>();
