@@ -1,6 +1,6 @@
 # DecisionOps — Handoff / Status
 
-**Last updated:** 2026-06-29 · **Branch:** `main` · **HEAD:** `7a89821` · **Tests:** 44 passing (18 files), `tsc --noEmit` clean.
+**Last updated:** 2026-07-01 · **Branch:** `async-observer` · **Tests:** 46 passing (18 files), `tsc --noEmit` clean.
 
 This is the pick-up-here doc for the next agent. Pair it with `CLAUDE.md` (codebase guide), the spec (`docs/superpowers/specs/2026-06-28-decisionops-design.md`), and the build plan (`docs/superpowers/plans/2026-06-28-decisionops-v1.md`).
 
@@ -46,7 +46,7 @@ Ran against a real Pro workspace ("personal") + real Anthropic:
 ---
 
 ## Known issues / refinements (not blockers)
-- **Primary-entity keying (worth fixing early in phase 2).** `runCapture` keys the warm-start profile on `resolved.entities[0]`. The LLM sometimes lists a **user id first**, so the live profile was keyed on a *person* (`U0BD…`), not `channel:C0BD…`. Warm-start would be more deterministic if the primary entity preferred the channel/project. File: `src/agent/capture.ts` (`primaryEntity` selection). Low-risk change; add a test.
+- **Primary-entity keying — FIXED (2026-07-01).** `runCapture` now keys the warm-start profile on the **channel seed** (`src/agent/capture.ts`), never `resolved.entities[0]` (which could be a person). `finalize` reuses `cap.profile.entityId` (`src/app.ts`) so the read and write keys can't diverge — a first review pass caught that the original fix only touched the read side, which would have made warm-start miss *forever* in the person-first case. A round-trip test pins read==write. Project-level cross-channel keying (preferring a `project:` entity) is deferred: it needs `resolve.ts` to emit canonical `project:` ids **and** visibility-scoping of observed `recentThreads` (see the async-observer spec §7).
 - **Owners often empty.** Seed threads reference "eng-lead"/"finance" as plain text (no real `@mentions`), so `synthesize` returns no structured owners → "no follow-up owners". Expected on synthetic data; real threads with real mentions should populate owners.
 - **Minor review findings (accepted for v1)** are logged in `.superpowers/sdd/progress.md` (git-ignored). Notable ones a phase-2 hardening pass could pick up: Ledger `conversations.history` pagination is untested; `structured()` throws on a no-text model response; a few test-coverage gaps (dm-audience scoping, etc.). None are correctness bugs.
 - **`reject` runs the observer?** Already fixed — `app.ts` gates `consolidate`+`writeProfile` on `status==="decided"`, so a rejected decision is recorded but not folded into memory.
@@ -69,8 +69,8 @@ Ran against a real Pro workspace ("personal") + real Anthropic:
 ## What's next — ranked
 
 1. **Demo + submission assets (highest ROI for the hackathon).** Record the ~3-min demo (a live capture + the Ledger records), draw the architecture diagram, and set up the required **developer sandbox** shared with `slackhack@salesforce.com` + `testing@devpost.com` (the current Pro workspace is fine for dev, but submission needs the sandbox — note the sandbox is a Grid org, so RTS must use a workspace-level token and you can't import backdated history; seed via `npm run seed`). Decide the **track** (New Slack Agent is the fit; Organizations requires Marketplace submission).
-2. **Entity-keying refinement** (above) — small, makes the memory/warm-start behave as designed; good to land before demoing the cold-vs-warm story live.
-3. **Phase-2 subsystem — async/event-driven observer.** Promote the inline observer to watch opted-in channels so even capture #1 is warm. This is the natural next feature and directly strengthens the moat. Needs its own brainstorm→spec→plan.
+2. **Entity-keying refinement — DONE (2026-07-01).** Channel-keyed, read==write, round-trip test. See the fixed known-issue above.
+3. **Phase-2 subsystem — async/event-driven observer — SPEC + PLAN READY (2026-07-01).** Brainstorm→spec→plan complete and adversarially reviewed (3 agent passes: critique → verify → focused check; verdict *sound to build*). See `docs/superpowers/specs/2026-07-01-async-observer-design.md` + `docs/superpowers/plans/2026-07-01-async-observer-vnext.md`. Design: scheduled poll · fold-when-ripe (LLM only on a ripe backlog, capped per tick) · registry reconciled from bot membership · passive-only. Core invariant: the delta cursor advances **only over folded content** (oldest-first bounded windows) ⇒ warm ≤ cold. Ready to build subagent-driven.
 4. **Phase-2 — proactive nudge** ("this thread looks like a decision — capture it?") in opted-in channels. Needs a detection classifier + ephemeral suggestion; keep it opt-in (no broad retrieval before a human approves).
 5. **Phase-2 — seeded real-workspace retrieval-quality eval** (Layer-2): import/seed a workspace with planted relationships, measure recall/precision + cold-vs-warm on real volume (see spec §9; note RTS indexing lag — build the sentinel probe).
 

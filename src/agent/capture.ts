@@ -36,8 +36,13 @@ export async function runCapture(
   // Step 3: resolve the decision from the thread.
   const resolved = await resolveThread(deps.llm, input.threadText, [seed]);
 
-  // Step 4 (Recall): pull the entity profile; cold-start inline if none exists.
-  const primaryEntity = resolved.entities[0] ?? seed;
+  // Step 4 (Recall): key memory on the channel the decision lives in — a stable,
+  // always-present anchor and the single source of truth for the profile key (finalize
+  // reuses `profile.entityId`, so read == write). Deliberately NOT resolved.entities[0]:
+  // the resolver often lists a person first, which would fragment warm-start onto an
+  // individual. Project-level cross-channel keying is a future step — it needs resolve.ts
+  // to emit canonical `project:` ids (see UPDATE.md), so it's out of scope for v1.
+  const primaryEntity = seed;
   const profile =
     (await deps.ledger.getProfile(primaryEntity)) ?? coldProfile(primaryEntity, deps.now);
 

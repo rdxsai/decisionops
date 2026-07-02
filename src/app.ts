@@ -13,7 +13,7 @@ import { runCapture } from "./agent/capture.js";
 import { createBriefCanvas, markCanvasDecided } from "./slack/canvas.js";
 import { approvalBlocks, finalDecisionBlocks } from "./slack/blocks.js";
 import { consolidate, coldProfile } from "./memory/observer.js";
-import { entityIdForChannel, type DecisionRecord } from "./types.js";
+import type { DecisionRecord } from "./types.js";
 
 const cfg = loadConfig(process.env);
 const app = new App({ token: cfg.botToken, appToken: cfg.appToken, signingSecret: cfg.signingSecret, socketMode: true });
@@ -31,7 +31,7 @@ const ledgerClient: LedgerClient = {
 const ledger = makeLedger(ledgerClient, cfg.ledgerChannelId);
 
 // In-memory map from decisionId -> the materials needed to finalize. v1: process-local.
-const pending = new Map<string, { record: DecisionRecord; canvasId: string; refs: any[]; channelId: string; threadTs: string; brief: any }>();
+const pending = new Map<string, { record: DecisionRecord; primaryEntity: string; canvasId: string; refs: any[]; channelId: string; threadTs: string; brief: any }>();
 
 const nowIso = () => new Date().toISOString();
 const newId = () => `d_${Math.random().toString(36).slice(2, 10)}`;
@@ -72,7 +72,7 @@ app.shortcut("capture_decision", async ({ shortcut, ack, client }: { shortcut: a
     entities: cap.resolved.entities, relatedDecisionIds: [],
     contextRefs: cap.refs, canvasId,
   };
-  pending.set(id, { record, canvasId, refs: cap.refs, channelId, threadTs, brief: cap.brief });
+  pending.set(id, { record, primaryEntity: cap.profile.entityId, canvasId, refs: cap.refs, channelId, threadTs, brief: cap.brief });
 
   await bot.chat.postMessage({
     channel: channelId, thread_ts: threadTs,
@@ -103,7 +103,9 @@ async function finalize(decisionId: string, approverId: string, status: "decided
   await ledger.writeDecision(record);
   // Only consolidate into the entity profile for approved decisions.
   if (status === "decided") {
-    const entity = record.entities[0] ?? entityIdForChannel(p.channelId);
+    // Reuse the exact key the capture chose for recall, so the profile is written under
+    // the same entity it will be read back under next time (read == write; no warm-start miss).
+    const entity = p.primaryEntity;
     const prior = (await ledger.getProfile(entity)) ?? coldProfile(entity, nowIso());
     const newCursorTs = p.threadTs; // delta cursor advances to this capture's anchor
     const profile = await consolidate({
