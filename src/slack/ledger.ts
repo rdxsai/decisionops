@@ -26,6 +26,7 @@ export interface Ledger {
   getProfile(id: EntityId): Promise<EntityProfile | null>;
   relatedDecisions(entities: EntityId[]): Promise<DecisionRecord[]>;
   allDecisions(): Promise<DecisionRecord[]>;
+  allProfiles(): Promise<EntityProfile[]>;
 }
 
 const summarize = (r: DecisionRecord | EntityProfile): string =>
@@ -74,6 +75,15 @@ export function makeLedger(client: LedgerClient, channelId: string): Ledger {
       const out: DecisionRecord[] = [];
       for (const r of await readAll()) {
         if (isDecisionRecord(r) && !seen.has(r.id)) { seen.add(r.id); out.push(r); }
+      }
+      return out;
+    },
+
+    async allProfiles() {
+      const seen = new Set<string>();
+      const out: EntityProfile[] = [];
+      for (const r of await readAll()) { // newest-first => first per entity is latest
+        if (isEntityProfile(r) && !seen.has(r.entityId)) { seen.add(r.entityId); out.push(r); }
       }
       return out;
     },

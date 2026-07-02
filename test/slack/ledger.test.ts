@@ -65,4 +65,15 @@ describe("Ledger", () => {
     expect(messages.map((m) => m.metadata.event_type).sort())
       .toEqual([DECISION_EVENT_TYPE, PROFILE_EVENT_TYPE].sort());
   });
+
+  it("allProfiles returns the latest profile per entity", async () => {
+    const { client } = fakeClient();
+    const ledger = makeLedger(client, "CLEDGER");
+    await ledger.writeProfile(profile("channel:C1", "old"));
+    await ledger.writeProfile(profile("channel:C1", "new"));
+    await ledger.writeProfile(profile("channel:C2", "two"));
+    const all = await ledger.allProfiles();
+    expect(all.map((p) => [p.entityId, p.static.summary]).sort())
+      .toEqual([["channel:C1", "new"], ["channel:C2", "two"]]);
+  });
 });
