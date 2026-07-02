@@ -52,7 +52,7 @@ export interface StaticProfile {
 
 export interface DynamicProfile {
   inFlightDecisions: string[];
-  recentThreads: { permalink: string; snippet: string; ts: string }[];
+  recentThreads: RecentThread[];
   openQuestions: string[];
   searchCursor: { untilTs: string };
   refreshedAt: string;
@@ -74,3 +74,24 @@ export const isEntityProfile = (r: any): r is EntityProfile =>
 
 export const DECISION_EVENT_TYPE = "decisionops_record";
 export const PROFILE_EVENT_TYPE = "decisionops_profile";
+
+export interface RecentThread {
+  permalink: string;
+  snippet: string;
+  ts: string;
+}
+
+export interface ChannelMessage {
+  ts: string;
+  user: string;
+  text: string;
+}
+
+export interface ChannelRegistration {
+  recordType: "channel_registration";
+  channelId: string;
+  active: boolean;
+  registeredAt: string;
+}
+
+export const CHANNEL_REGISTRATION_EVENT_TYPE = "decisionops_channel";
