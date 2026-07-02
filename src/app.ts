@@ -13,6 +13,9 @@ import { runCapture } from "./agent/capture.js";
 import { createBriefCanvas, markCanvasDecided } from "./slack/canvas.js";
 import { approvalBlocks, finalDecisionBlocks } from "./slack/blocks.js";
 import { consolidate, coldProfile } from "./memory/observer.js";
+import { makeRegistry } from "./slack/registry.js";
+import { makeHistory } from "./slack/history.js";
+import { runObserverTick } from "./observer/loop.js";
 import type { DecisionRecord } from "./types.js";
 
 const cfg = loadConfig(process.env);
@@ -126,3 +129,44 @@ app.action("revise", async ({ ack, body }: { ack: any; body: any }) => {
 
 await app.start();
 console.log("⚡ DecisionOps agent running (socket mode)");
+
+if (cfg.observerEnabled) {
+  const registry = makeRegistry(ledgerClient, cfg.ledgerChannelId, nowIso);
+  const history = makeHistory({ conversationsHistory: (a) => bot.conversations.history(a as any) as any });
+  const botMemberships = async (): Promise<string[]> => {
+    const ids: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const res: any = await bot.users.conversations({
+        types: "public_channel,private_channel", exclude_archived: true, limit: 200, cursor,
+      });
+      for (const c of res.channels ?? []) if (c.id) ids.push(c.id);
+      cursor = res.response_metadata?.next_cursor || undefined;
+    } while (cursor);
+    return ids;
+  };
+  const permalink = async (channel: string, ts: string): Promise<string> => {
+    const res: any = await bot.chat.getPermalink({ channel, message_ts: ts });
+    return res.permalink ?? `slack://channel?id=${channel}&ts=${ts}`;
+  };
+
+  let running = false; // overlapping-tick guard (app-level; gated by tsc + live, not unit-tested)
+  const tick = async () => {
+    if (running) return;
+    running = true;
+    try {
+      const r = await runObserverTick({
+        ledger, registry, history, permalink, llm, botMemberships,
+        threshold: cfg.observerThreshold, recentK: cfg.observerRecentK,
+        foldWindow: cfg.observerFoldWindow, maxFolds: cfg.observerMaxFoldsPerTick, now: nowIso,
+      });
+      console.log(`observer tick: folded=${r.folded} skipped=${r.skipped} deferred=${r.deferred}`);
+    } catch (e) {
+      console.error("observer tick failed:", e);
+    } finally {
+      running = false;
+    }
+  };
+  setInterval(tick, cfg.observerIntervalMs);
+  console.log(`👀 observer enabled — every ${cfg.observerIntervalMs}ms, ≤${cfg.observerMaxFoldsPerTick} folds/tick`);
+}
