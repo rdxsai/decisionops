@@ -107,9 +107,11 @@ const ACTIVITY_INSTR =
   "Ground every claim in the messages: do NOT add roles, recommendations, outcomes, vendors, " +
   "or norms that are not stated. If a system or vendor is implied but unnamed, do not name it. " +
   "Prefer omitting a detail over inferring one. " +
-  "For `keyPeople`, prefer those who own or must approve the decision (named approvers/stakeholders) " +
-  "over someone merely narrating updates. Keep time-bound deadlines in `dynamic` (open questions), " +
-  "not in `static` norms, since static should stay stable across turns.";
+  "`keyPeople` holds Slack user ids of the stakeholders central to the area's decisions " +
+  "(owners/approvers) — user ids only; capture roles named in plain text but lacking a user id " +
+  "(e.g. 'eng-lead', 'finance') in `decisionNorms`, not here. " +
+  "Keep time-bound deadlines in `dynamic` (open questions), not in `static` norms, since static " +
+  "should stay stable across turns.";
 
 // Fold EXACTLY the given messages into the profile. The caller (runObserverTick) passes a
 // bounded, contiguous-from-the-cursor window (oldest-first coverage), so folding all of
