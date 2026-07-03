@@ -103,7 +103,13 @@ const ACTIVITY_INSTR =
   "only if the area's nature, key people, or norms actually drifted, and capture the " +
   "still-open questions the channel is wrestling with. Keep `dynamic` to the delta. Be terse; " +
   "profiles must stay small enough to inject every turn and stable enough to prompt-cache. " +
-  "Provenance only — never inline full message bodies.";
+  "Provenance only — never inline full message bodies. " +
+  "Ground every claim in the messages: do NOT add roles, recommendations, outcomes, vendors, " +
+  "or norms that are not stated. If a system or vendor is implied but unnamed, do not name it. " +
+  "Prefer omitting a detail over inferring one. " +
+  "For `keyPeople`, prefer those who own or must approve the decision (named approvers/stakeholders) " +
+  "over someone merely narrating updates. Keep time-bound deadlines in `dynamic` (open questions), " +
+  "not in `static` norms, since static should stay stable across turns.";
 
 // Fold EXACTLY the given messages into the profile. The caller (runObserverTick) passes a
 // bounded, contiguous-from-the-cursor window (oldest-first coverage), so folding all of

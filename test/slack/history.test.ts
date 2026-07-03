@@ -31,4 +31,21 @@ describe("HistoryReader", () => {
     await makeHistory(client).readSince("C1", "0");
     expect(client.conversationsHistory).toHaveBeenCalledWith(expect.objectContaining({ oldest: undefined }));
   });
+
+  it("drops non-content system messages (channel_join etc.) but keeps real + bot content", async () => {
+    const client: HistoryClient = {
+      conversationsHistory: vi.fn(async () => ({
+        messages: [
+          { ts: "500", user: "U1", text: "real decision talk" },
+          { ts: "400", user: "U2", subtype: "channel_join", text: "U2 has joined the channel" },
+          { ts: "300", user: "U3", subtype: "channel_topic", text: "set the channel topic" },
+          { ts: "200", user: "BOT", subtype: "bot_message", text: "integration posted context" },
+        ],
+      })),
+    };
+    const msgs = await makeHistory(client).readSince("C1", "0");
+    // channel_join / channel_topic dropped; real user message + bot content kept.
+    expect(msgs.map((m) => m.ts)).toEqual(["500", "200"]);
+    expect(msgs.map((m) => m.text)).toEqual(["real decision talk", "integration posted context"]);
+  });
 });
