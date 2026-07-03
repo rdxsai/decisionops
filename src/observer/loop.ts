@@ -21,6 +21,7 @@ export async function runObserverTick(deps: {
   maxFolds: number;
   now: () => string;
   ledgerChannelId: string;
+  selfBotId?: string; // the observer's own bot user id — never memorialized as a key person
 }): Promise<{ folded: number; skipped: number; deferred: number }> {
   // The Ledger channel is the datastore, not a decision channel — never observe/fold its
   // own bookkeeping messages. Filtering before reconcile also self-heals: if it was ever
@@ -55,6 +56,11 @@ export async function runObserverTick(deps: {
     })));
 
     const profile = await observeActivity({ llm: deps.llm, prior, messages: window, recentRefs, now: deps.now() });
+    // Structural guarantee: the observer authored/narrates via its own bot id, so that id
+    // must never be recorded as a decision stakeholder — filter it regardless of prompt output.
+    if (deps.selfBotId) {
+      profile.static.keyPeople = profile.static.keyPeople.filter((id) => id !== deps.selfBotId);
+    }
     await deps.ledger.writeProfile(profile);
     folded++;
   }

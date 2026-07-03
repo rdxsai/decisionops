@@ -149,6 +149,8 @@ if (cfg.observerEnabled) {
     const res: any = await bot.chat.getPermalink({ channel, message_ts: ts });
     return res.permalink ?? `slack://channel?id=${channel}&ts=${ts}`;
   };
+  // The observer's own bot user id — never memorialized as a decision stakeholder.
+  const selfBotId: string | undefined = (await bot.auth.test().catch(() => undefined) as any)?.user_id;
 
   let running = false; // overlapping-tick guard (app-level; gated by tsc + live, not unit-tested)
   const tick = async () => {
@@ -159,7 +161,7 @@ if (cfg.observerEnabled) {
         ledger, registry, history, permalink, llm, botMemberships,
         threshold: cfg.observerThreshold, recentK: cfg.observerRecentK,
         foldWindow: cfg.observerFoldWindow, maxFolds: cfg.observerMaxFoldsPerTick, now: nowIso,
-        ledgerChannelId: cfg.ledgerChannelId,
+        ledgerChannelId: cfg.ledgerChannelId, selfBotId,
       });
       console.log(`observer tick: folded=${r.folded} skipped=${r.skipped} deferred=${r.deferred}`);
     } catch (e) {

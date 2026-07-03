@@ -107,9 +107,11 @@ const ACTIVITY_INSTR =
   "Ground every claim in the messages: do NOT add roles, recommendations, outcomes, vendors, " +
   "or norms that are not stated. If a system or vendor is implied but unnamed, do not name it. " +
   "Prefer omitting a detail over inferring one. " +
-  "`keyPeople` holds Slack user ids of the stakeholders central to the area's decisions " +
-  "(owners/approvers) — user ids only; capture roles named in plain text but lacking a user id " +
-  "(e.g. 'eng-lead', 'finance') in `decisionNorms`, not here. " +
+  "`keyPeople` holds Slack user ids of stakeholders the messages explicitly designate as owning, " +
+  "approving, or being assigned the decision (e.g. someone shown approving it, or tasked with an " +
+  "action) — authoring or merely narrating messages does NOT by itself make an id a key person. " +
+  "User ids only; capture roles named in plain text but lacking a user id (e.g. 'eng-lead', " +
+  "'finance') in `decisionNorms`, not here. " +
   "Keep time-bound deadlines in `dynamic` (open questions), not in `static` norms, since static " +
   "should stay stable across turns.";
 

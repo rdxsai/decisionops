@@ -35,7 +35,32 @@ const deps = (over: any) => ({
   ledgerChannelId: "CLEDGER", ...over,
 });
 
+// A fold LLM that returns keyPeople containing the observer's own bot id plus a real stakeholder.
+function foldLlmWithKeyPeople(keyPeople: string[]) {
+  const create = vi.fn(async () => ({ content: [{ type: "text", text: JSON.stringify({
+    static: { summary: "warmed", keyPeople, keySystems: [], decisionNorms: "", builtAt: "t" },
+    dynamic: { inFlightDecisions: [], recentThreads: [], openQuestions: [], searchCursor: { untilTs: "z" }, refreshedAt: "z" },
+  })}]}));
+  return { llm: new Llm({ messages: { create } } as any), create };
+}
+
 describe("runObserverTick", () => {
+  it("never records the observer's own bot id as a key person (structural guarantee)", async () => {
+    const { client } = fakeLedgerClient();
+    const ledger = makeLedger(client, "CLEDGER");
+    const registry = makeRegistry(client, "CLEDGER", () => "t");
+    const history = makeHistory(fakeHistoryClient({
+      C1: Array.from({ length: 10 }, (_, i) => ({ ts: `${200 + i}`, user: "U1", text: "budget talk" })),
+    }));
+    // Model (mis)includes the observer's own bot id BOT alongside a real approver U9.
+    const { llm } = foldLlmWithKeyPeople(["BOT", "U9"]);
+
+    await runObserverTick(deps({ ledger, registry, history, llm, selfBotId: "BOT", botMemberships: async () => ["C1"] }));
+
+    const profile = await ledger.getProfile("channel:C1");
+    expect(profile?.static.keyPeople).toEqual(["U9"]); // BOT filtered out, real stakeholder kept
+  });
+
   it("folds a ripe channel and writes a warmed profile with the newest cursor", async () => {
     const { client } = fakeLedgerClient();
     const ledger = makeLedger(client, "CLEDGER");
